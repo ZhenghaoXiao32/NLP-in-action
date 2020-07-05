@@ -1,0 +1,67 @@
+---
+title: "NLP in action"
+author: "Zhenghao Xiao"
+date: "7/3/2020"
+output: 
+  html_document:
+    keep_md: yes
+  md_document:
+    variant: markdown_github
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+
+## Import data
+
+```{r}
+import_data <- function(){
+  data_loc <- "data"
+  url <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+  file_name <- "Coursera-SwiftKey.zip"
+  file_path <- paste(data_loc, file_name, sep = "/")
+  if (!file.exists(file_path)){
+    download.file(url, destfile = file_path, method = "curl")
+  }
+  if (!file.exists("data/final")){
+    unzip(zipfile = file_path, exdir = data_loc)
+  }
+}
+
+import_data()
+```
+
+### Explore basic info 
+
+```{r}
+file_list <- list.files(path = "data/final/en_US")
+basic_info <- lapply(paste("data/final/en_US", file_list, sep = "/"), function(f) {
+  file_size <- file.info(f)[1] / 1024 / 1024
+  con <- file(f, open = "r")
+  lines <- readLines(con)
+  num_chars <- lapply(lines, nchar)
+  max_char_loc <- which.max(num_chars)
+  max_char <- num_chars[[which.max(num_chars)]]
+  num_words <- sum(sapply(strsplit(lines, "\\s+"), length))
+  close(con)
+  return(c(f, 
+           format(round(file_size, 2), nsmall = 2),
+           length(lines),
+           max_char_loc,
+           max_char,
+           num_words))
+})
+
+basic_info_df <- data.frame(matrix(unlist(basic_info), nrow = length(basic_info), byrow = TRUE))
+colnames(basic_info_df) <- c("file_name", "size_MB", "num_of_lines", "longest_line_loc", "longest_line_size", "num_of_words")
+basic_info_df
+```
+
+
+
+
