@@ -12,6 +12,11 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tm)
+library(tidyverse)
+library(stringi)
+library(tm)
+library(RWeka)
 ```
 
 ## Introduction
@@ -20,7 +25,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Import data
 
 ```{r}
-import_data <- function(){
+download_data <- function(){
+  if (!file.exists('data')) {
+    dir.create('data')
+}
   data_loc <- "data"
   url <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
   file_name <- "Coursera-SwiftKey.zip"
@@ -33,17 +41,18 @@ import_data <- function(){
   }
 }
 
-import_data()
+download_data()
 ```
 
 ### Explore basic info 
+
 
 ```{r}
 file_list <- list.files(path = "data/final/en_US")
 basic_info <- lapply(paste("data/final/en_US", file_list, sep = "/"), function(f) {
   file_size <- file.info(f)[1] / 1024 / 1024
   con <- file(f, open = "r")
-  lines <- readLines(con)
+  lines <- readLines(con, encoding = "UTF-8", skipNul = TRUE)
   num_chars <- lapply(lines, nchar)
   max_char_loc <- which.max(num_chars)
   max_char <- num_chars[[which.max(num_chars)]]
@@ -64,4 +73,34 @@ basic_info_df
 
 
 
+### Load a random sample of the data
+
+
+```{r}
+set.seed(1234)
+file_paths <- paste("data/final/en_US", file_list, sep = "/")
+sample_names <- c("blogs_sample", "news_sample", "twitter_sample")
+
+load_sample_data <- function(sample_size = 0.1) {
+  for (i in 1:3){
+    con <- file(file_paths[i], open = "r")
+    assign(sample_names[i], readLines(con, encoding = "UTF-8", skipNul = TRUE)[rbinom(basic_info_df[i, 3], 1,  sample_size) == 1], envir = .GlobalEnv)
+    close(con)
+  }
+}
+
+load_sample_data(sample_size = 0.1)
+```
+
+### Check for 1-gram phrases frequency on blogs sample
+
+```{r}
+sc <- Corpus(VectorSource(list(blogs_sample)))
+tri_gram_tokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 1, max = 1))
+term_doc_matrix <- TermDocumentMatrix(sc, control = list(tokenize = tri_gram_tokenizer))
+tri_gram_df <- data.frame(inspect(term_doc_matrix))
+names(tri_gram_df) <- "frequency"
+tri_gram_df$word <- rownames(tri_gram_df)
+tri_gram_df %>% arrange(desc(frequency)) %>% head(.)
+```
 
